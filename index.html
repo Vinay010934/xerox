@@ -756,81 +756,119 @@ body{
   }
 }
 
-/* UPLOAD POPUP LOADER */
+/* UPLOAD BOTTOM POPUP LOADER - PAGE DOWN */
 .upload-popup{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.45);
-  backdrop-filter:blur(4px);
   display:none;
-  align-items:center;
-  justify-content:center;
+  position:fixed;
+  left:50%;
+  bottom:22px;
+  transform:translateX(-50%);
+  width:90%;
+  max-width:390px;
   z-index:9999;
-  padding:20px;
+  animation:bottomUpload .28s ease;
 }
 
 .upload-popup.active{
-  display:flex;
+  display:block;
+}
+
+@keyframes bottomUpload{
+  from{
+    opacity:0;
+    transform:translate(-50%,18px);
+  }
+  to{
+    opacity:1;
+    transform:translate(-50%,0);
+  }
 }
 
 .upload-card{
   width:100%;
-  max-width:360px;
-  background:#fff;
-  border-radius:26px;
-  padding:28px 24px;
-  text-align:center;
-  box-shadow:0 18px 55px rgba(0,0,0,.25);
-  animation:popupZoom .28s ease;
+  background:#ffffff;
+  border:1px solid #dbeafe;
+  border-radius:20px;
+  padding:14px;
+  box-shadow:0 18px 45px rgba(7,88,255,.28);
+  position:relative;
 }
 
-@keyframes popupZoom{
-  from{
-    opacity:0;
-    transform:scale(.88) translateY(15px);
-  }
-  to{
-    opacity:1;
-    transform:scale(1) translateY(0);
-  }
+.upload-top{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding-right:36px;
 }
 
-.upload-loader-icon{
-  width:68px;
-  height:68px;
-  margin:0 auto 18px;
-  border-radius:50%;
-  border:7px solid #e7efff;
-  border-top-color:#0758ff;
-  animation:spinUpload .9s linear infinite;
+.upload-symbol{
+  width:46px;
+  height:46px;
+  background:linear-gradient(135deg,#0758ff,#39b9ff);
+  color:white;
+  border-radius:15px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:24px;
+  flex-shrink:0;
+  box-shadow:0 8px 18px rgba(7,88,255,.25);
+  animation:uploadBounce 1s ease-in-out infinite;
 }
 
-@keyframes spinUpload{
-  to{
-    transform:rotate(360deg);
-  }
+@keyframes uploadBounce{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-4px)}
+}
+
+.upload-info{
+  flex:1;
+  min-width:0;
 }
 
 .upload-card h3{
-  font-size:22px;
+  font-size:16px;
   color:#101828;
-  margin-bottom:8px;
+  margin-bottom:4px;
 }
 
 .upload-card p{
-  font-size:14px;
+  font-size:13px;
   color:#667085;
-  line-height:1.45;
-  word-break:break-word;
+  line-height:1.4;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.upload-close{
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:30px;
+  height:30px;
+  border:none;
+  border-radius:50%;
+  background:#eef5ff;
+  color:#0758ff;
+  font-size:22px;
+  line-height:30px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.upload-close:hover{
+  background:#0758ff;
+  color:white;
 }
 
 .progress-wrap{
   width:100%;
-  height:13px;
+  height:11px;
   background:#eaf2ff;
   border-radius:30px;
   overflow:hidden;
-  margin:22px 0 10px;
+  margin:14px 0 8px;
 }
 
 .progress-bar{
@@ -842,23 +880,27 @@ body{
 }
 
 .progress-percent{
-  font-size:17px;
+  font-size:14px;
   font-weight:900;
   color:#0758ff;
+  text-align:right;
 }
 
 .upload-success{
   display:none;
-  font-size:46px;
-  margin-bottom:12px;
 }
 
-.upload-card.done .upload-loader-icon{
-  display:none;
+.upload-card.done .upload-symbol{
+  animation:none;
+  background:#12b76a;
 }
 
-.upload-card.done .upload-success{
-  display:block;
+.upload-card.done .upload-symbol::before{
+  content:"✅";
+}
+
+.upload-card.done .upload-symbol{
+  font-size:0;
 }
 
 .upload-card.done .progress-bar{
@@ -866,17 +908,27 @@ body{
 }
 
 @media(min-width:900px){
+  .upload-popup{
+    max-width:650px;
+    bottom:38px;
+  }
+
   .upload-card{
-    max-width:430px;
-    padding:35px 32px;
+    padding:18px;
+  }
+
+  .upload-symbol{
+    width:54px;
+    height:54px;
+    font-size:28px;
   }
 
   .upload-card h3{
-    font-size:27px;
+    font-size:19px;
   }
 
   .upload-card p{
-    font-size:16px;
+    font-size:15px;
   }
 }
 
@@ -920,6 +972,26 @@ body{
 </label>
 
 <p id="fileName" class="file-name">Only PDF files are allowed</p>
+
+<div class="upload-popup" id="uploadPopup">
+  <div class="upload-card" id="uploadCard">
+    <button class="upload-close" id="cancelUpload" type="button" aria-label="Cancel upload">×</button>
+
+    <div class="upload-top">
+      <div class="upload-symbol">⬆️</div>
+      <div class="upload-info">
+        <h3 id="uploadTitle">Uploading PDF...</h3>
+        <p id="uploadText">Please wait while your document is uploading.</p>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="progress-percent" id="progressPercent">0%</div>
+  </div>
+</div>
 
     <p class="note">*Offer applies to 10 pages of BW or ₹30 max discount on color</p>
   </section>
@@ -999,22 +1071,6 @@ body{
 
 </div>
 
-<!-- UPLOAD LOADING POPUP -->
-<div class="upload-popup" id="uploadPopup">
-  <div class="upload-card" id="uploadCard">
-    <div class="upload-loader-icon"></div>
-    <div class="upload-success">✅</div>
-
-    <h3 id="uploadTitle">Uploading PDF...</h3>
-    <p id="uploadText">Please wait while your document is uploading.</p>
-
-    <div class="progress-wrap">
-      <div class="progress-bar" id="progressBar"></div>
-    </div>
-
-    <div class="progress-percent" id="progressPercent">0%</div>
-  </div>
-</div>
 
 <script>
 const pdfUpload = document.getElementById("pdfUpload");
@@ -1026,15 +1082,39 @@ const uploadTitle = document.getElementById("uploadTitle");
 const uploadText = document.getElementById("uploadText");
 const progressBar = document.getElementById("progressBar");
 const progressPercent = document.getElementById("progressPercent");
+const cancelUploadBtn = document.getElementById("cancelUpload");
 
 let uploadTimer;
+let currentUploadFileName = "";
+
+function resetUploadPopup(){
+  clearInterval(uploadTimer);
+  uploadPopup.classList.remove("active");
+  uploadCard.classList.remove("done");
+  progressBar.style.width = "0%";
+  progressPercent.textContent = "0%";
+  uploadTitle.textContent = "Uploading PDF...";
+  uploadText.textContent = "Please wait while your document is uploading.";
+}
+
+function cancelUpload(){
+  clearInterval(uploadTimer);
+  pdfUpload.value = "";
+  uploadPopup.classList.remove("active");
+  uploadCard.classList.remove("done");
+  progressBar.style.width = "0%";
+  progressPercent.textContent = "0%";
+  fileName.textContent = currentUploadFileName
+    ? "Upload cancelled: " + currentUploadFileName
+    : "Only PDF files are allowed";
+}
 
 function startUploadPopup(file){
   let progress = 0;
+  currentUploadFileName = file.name;
 
-  clearInterval(uploadTimer);
+  resetUploadPopup();
 
-  uploadCard.classList.remove("done");
   uploadPopup.classList.add("active");
   uploadTitle.textContent = "Uploading PDF...";
   uploadText.textContent = file.name;
@@ -1067,6 +1147,8 @@ function startUploadPopup(file){
   }, 160);
 }
 
+cancelUploadBtn.addEventListener("click", cancelUpload);
+
 pdfUpload.addEventListener("change", function(){
   const file = this.files[0];
 
@@ -1078,6 +1160,7 @@ pdfUpload.addEventListener("change", function(){
   if(file.type !== "application/pdf"){
     alert("Only PDF files are allowed!");
     this.value = "";
+    resetUploadPopup();
     fileName.textContent = "Only PDF files are allowed";
     return;
   }
