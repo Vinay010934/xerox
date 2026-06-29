@@ -1818,7 +1818,8 @@ function preparePdfUpload(files, mode){
     file,
     url: URL.createObjectURL(file),
     pageCount: 1,
-    pageCountLoading: true
+    pageCountLoading: true,
+    deletedPages: new Set()
   }));
 
   pendingUploadMode = mode;
@@ -1886,9 +1887,31 @@ async function getPdfDocumentForItem(item){
   return item.pdfDocPromise;
 }
 
+function getDeletedPages(item){
+  if(!item.deletedPages){
+    item.deletedPages = new Set();
+  }
+
+  return item.deletedPages;
+}
+
+function getActivePageCount(item){
+  const totalPages = Math.max(1, Number(item.pageCount) || 1);
+  const deletedPages = getDeletedPages(item);
+  let activePages = 0;
+
+  for(let pageNumber = 1; pageNumber <= totalPages; pageNumber++){
+    if(!deletedPages.has(pageNumber)){
+      activePages++;
+    }
+  }
+
+  return activePages;
+}
+
 function getTotalPageCount(){
   return uploadedFiles.reduce((total,item) => {
-    return total + Math.max(1, Number(item.pageCount) || 1);
+    return total + getActivePageCount(item);
   },0);
 }
 
@@ -2004,6 +2027,31 @@ function removeFile(index){
   updatePreviewAndPrice();
 }
 
+function removePage(fileIndex,pageNumber){
+  const item = uploadedFiles[fileIndex];
+
+  if(!item){
+    return;
+  }
+
+  const totalPages = Math.max(1, Number(item.pageCount) || 1);
+  const safePageNumber = Math.min(Math.max(1, Number(pageNumber) || 1), totalPages);
+
+  getDeletedPages(item).add(safePageNumber);
+
+  if(getActivePageCount(item) === 0){
+    removeFile(fileIndex);
+    return;
+  }
+
+  fileName.textContent = uploadedFiles.length + " PDF file(s) ready";
+  fileName.style.color = "#0758ff";
+
+  updatePageCountInput();
+  renderAllPdfPreviews();
+  updatePreviewAndPrice();
+}
+
 function renderAllPdfPreviews(){
   previewFilesList.innerHTML = "";
 
@@ -2013,10 +2061,19 @@ function renderAllPdfPreviews(){
     return;
   }
 
+  let visiblePages = 0;
+
   uploadedFiles.forEach((item,fileIndex) => {
     const totalPages = Math.max(1, Number(item.pageCount) || 1);
+    const deletedPages = getDeletedPages(item);
 
     for(let pageNumber = 1; pageNumber <= totalPages; pageNumber++){
+      if(deletedPages.has(pageNumber)){
+        continue;
+      }
+
+      visiblePages++;
+
       const card = document.createElement("div");
       card.className = "preview-file-card";
 
@@ -2031,7 +2088,7 @@ function renderAllPdfPreviews(){
           <div class="preview-page-wrap">
             <canvas class="preview-canvas" data-file-index="${fileIndex}" data-page-number="${pageNumber}" aria-label="PDF page ${pageNumber} preview"></canvas>
             <iframe class="preview-frame" src="${makePdfViewerUrl(item.url,pageNumber)}" title="PDF Preview ${pageNumber}"></iframe>
-            <button class="remove-file-btn" type="button" data-index="${fileIndex}" aria-label="Remove this PDF file">🗑</button>
+            <button class="remove-file-btn" type="button" data-file-index="${fileIndex}" data-page-number="${pageNumber}" aria-label="Remove this page from print">🗑</button>
           </div>
         </div>
       `;
@@ -2040,10 +2097,24 @@ function renderAllPdfPreviews(){
     }
   });
 
+  if(visiblePages === 0){
+    uploadedFiles.forEach(item => {
+      if(item.url){
+        URL.revokeObjectURL(item.url);
+      }
+    });
+    uploadedFiles = [];
+    updatePageCountInput();
+    fileName.textContent = "Only PDF files are allowed";
+    fileName.style.color = "#0758ff";
+    pdfUpload.value = "";
+    previewFilesList.innerHTML = '<div class="no-files-box">No PDF files selected for print.</div>';
+    return;
+  }
+
   previewFilesList.scrollTop = 0;
   previewFilesList.scrollLeft = 0;
 }
-
 function makePdfViewerUrl(url,pageNumber = 1){
   return url + "#page=" + pageNumber + "&toolbar=0&navpanes=0&scrollbar=0&view=Fit";
 }
@@ -2210,7 +2281,10 @@ cancelUploadTop.addEventListener("click", cancelUpload);
 previewFilesList.addEventListener("click", function(event){
   const removeButton = event.target.closest(".remove-file-btn");
   if(removeButton){
-    removeFile(Number(removeButton.dataset.index));
+    removePage(
+      Number(removeButton.dataset.fileIndex),
+      Number(removeButton.dataset.pageNumber)
+    );
   }
 });
 
@@ -2247,7 +2321,7 @@ addToCartBtn.addEventListener("click", function(){
 
   const amount = calculatePrice();
   addToCartBtn.textContent = "Added ✓";
-  alert("Print order added to cart. Final cost: ₹" + amount);
+  alert("Print order added to cart. Pages selected: " + getTotalPageCount() + ". Final cost: ₹" + amount);
 
   setTimeout(() => {
     addToCartBtn.textContent = "Add to Cart";
